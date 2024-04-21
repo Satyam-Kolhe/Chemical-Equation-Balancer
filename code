@@ -1,0 +1,200 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+// import java.text.DecimalFormat;
+import java.util.Arrays;
+
+public class EchelonFormCalculator extends JFrame {
+    private JTextField[][] matrixFields;
+    private int rows;
+    private int cols;
+    private JButton calculateButton;
+    private JTextArea resultArea;
+    private final int MIN_ROWS = 1; // Minimum number of rows
+    private final int MAX_ROWS = 10; // Maximum number of rows
+    private final int MIN_COLS = 2; // Minimum number of columns
+    private final int MAX_COLS = 10; // Maximum number of columns
+
+    public static double[][] rowEchelonForm(double[][] matrix) {
+        int numRows = matrix.length;
+        int numCols = matrix[0].length;
+        double[][] result = new double[numRows][numCols];
+        // Copy the input matrix to the result matrix
+        for (int i = 0; i < numRows; i++) {
+            result[i] = Arrays.copyOf(matrix[i], numCols);
+        }
+
+        int lead = 0;
+        for (int r = 0; r < numRows; r++) {
+            if (numCols <= lead) break;
+
+            int i = r;
+            while (result[i][lead] == 0) {
+                i++;
+                if (numRows == i) {
+                    i = r;
+                    lead++;
+                    if (numCols == lead) {
+                        lead--;
+                        break;
+                    }
+                }
+            }
+
+            // Swap rows i and r
+            double[] temp = result[i];
+            result[i] = result[r];
+            result[r] = temp;
+
+            // Divide the pivot row by the pivot element
+            double lv = result[r][lead];
+            if (lv != 0) {
+                for (int j = 0; j < numCols; j++) {
+                    result[r][j] /= lv;
+                }
+            }
+
+            // Eliminate all other entries in this column
+            for (i = 0; i < numRows; i++) {
+                if (i != r) {
+                    double lv2 = result[i][lead];
+                    for (int j = 0; j < numCols; j++) {
+                        result[i][j] -= lv2 * result[r][j];
+                    }
+                }
+            }
+
+            lead++;
+        }
+        return result;
+    }
+
+    public EchelonFormCalculator() {
+        super("Echelon Form Calculator");
+
+        // Set minimum and maximum size for the window
+        setMinimumSize(new Dimension(400, 300));
+        setMaximumSize(new Dimension(800, 600));
+
+        // Get number of rows and columns from user
+        String inputRows = JOptionPane.showInputDialog("Enter number of rows (minimum " + MIN_ROWS + ", maximum " + MAX_ROWS + "):");
+        String inputCols = JOptionPane.showInputDialog("Enter number of columns (minimum " + MIN_COLS + ", maximum " + MAX_COLS + "):");
+
+        // Validate user input for rows
+        try {
+            rows = Integer.parseInt(inputRows);
+            if (rows < MIN_ROWS || rows > MAX_ROWS) {
+                JOptionPane.showMessageDialog(this, "Number of rows must be between " + MIN_ROWS + " and " + MAX_ROWS + ".");
+                System.exit(1);
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Invalid input for rows. Please enter a valid integer.");
+            System.exit(1);
+        }
+
+        // Validate user input for columns
+        try {
+            cols = Integer.parseInt(inputCols);
+            if (cols < MIN_COLS || cols > MAX_COLS) {
+                JOptionPane.showMessageDialog(this, "Number of columns must be between " + MIN_COLS + " and " + MAX_COLS + ".");
+                System.exit(1);
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Invalid input for columns. Please enter a valid integer.");
+            System.exit(1);
+        }
+
+        matrixFields = new JTextField[rows][cols];
+        JPanel inputPanel = new JPanel(new GridLayout(rows, cols));
+
+        // Create matrix input fields
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                matrixFields[i][j] = new JTextField(5);
+                inputPanel.add(matrixFields[i][j]);
+            }
+        }
+
+        calculateButton = new JButton("Calculate");
+        calculateButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                calculateEchelonForm();
+            }
+        });
+
+        resultArea = new JTextArea(10, 50);
+        resultArea.setEditable(false);
+        JScrollPane resultScrollPane = new JScrollPane(resultArea);
+
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(inputPanel, BorderLayout.CENTER);
+        mainPanel.add(calculateButton, BorderLayout.SOUTH);
+        mainPanel.add(resultScrollPane, BorderLayout.EAST);
+
+        getContentPane().add(mainPanel);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    private void calculateEchelonForm() {
+        // Read matrix values from input fields
+        double[][] matrix = new double[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                try {
+                    matrix[i][j] = Double.parseDouble(matrixFields[i][j].getText());
+                } catch (NumberFormatException e) {
+                    JOptionPane.showMessageDialog(this, "Invalid input. Please enter valid numbers.");
+                    return;
+                }
+            }
+        }
+
+        // Calculate echelon form
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < matrix.length; i++) {
+            int flag = -1;
+            for (int j = 0; j < matrix[0].length; j++) {
+                if (matrix[i][j] != 0) {
+                    flag = j;
+                    break;
+                }
+            }
+            if (flag != -1) {
+                double divider = matrix[i][flag];
+                for (int k = flag; k < matrix[0].length; k++) {
+                    matrix[i][k] /= divider;
+                }
+                for (int l = i + 1; l < matrix.length; l++) {
+                    double factor = matrix[l][flag];
+                    for (int m = flag; m < matrix[0].length; m++) {
+                        matrix[l][m] -= factor * matrix[i][m];
+                    }
+                }
+            }
+        }
+
+
+        matrix = rowEchelonForm(matrix);
+
+        // Display echelon form
+        // DecimalFormat df = new DecimalFormat("#.##");
+        result.append("Echelon Form:\n");
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result.append(String.format("%.2f",matrix[i][j])).append("\t");
+            }
+            result.append("\n");
+        }
+
+        resultArea.setText(result.toString());
+        JOptionPane.showMessageDialog(this, "Calculation completed successfully!");
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(EchelonFormCalculator::new);
+    }
+}
